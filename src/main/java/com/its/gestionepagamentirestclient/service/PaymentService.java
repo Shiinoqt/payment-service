@@ -8,86 +8,93 @@ import com.its.gestionepagamentirestclient.model.Payment;
 import com.its.gestionepagamentirestclient.model.StatusEnum;
 import com.its.gestionepagamentirestclient.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Service class responsible for managing transaction processing and payment records.
- * It simulates a payment gateway transaction using a randomized outcome and synchronizes
- * successful transactions back to the external order microservice.
+ * Service class handling the core business logic for payment processing.
+ * <p>
+ * This service manages the execution workflow of incoming payment requests, orchestrates
+ * entity persistence, updates transaction statuses randomly for simulation purposes,
+ * and broadcasts transaction result payloads back to RabbitMQ.
+ * </p>
  */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
-    /**
-     * Repository handling database persistence operations for {@link Payment} entities.
-     */
     private final PaymentRepository paymentRepository;
-
-    /**
-     * Mapper component used to convert between Payment entities and DTOs.
-     */
     private final PaymentMapper paymentMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
-     * REST client utilized to communicate asynchronously or synchronously back to the Order Service.
-     */
-    private final RestClient orderRestClient;
-
-    /**
-     * Processes an incoming payment request.
+     * Processes an incoming payment request by mapping it to a database entity,
+     * simulating a bank authorization check, persisting the result, and publishing
+     * the update event.
      * <p>
-     * This method simulates an external credit card gateway processing logic by randomly
-     * accepting or declining the transaction via {@link ThreadLocalRandom}.
-     * </p>
+     * The payment outcome is randomly decided (50/50 chance) to simulate processing flags:
      * <ul>
-     * <li>If declined, the record is stored as {@link StatusEnum#DECLINED} and an exception is thrown.</li>
-     * <li>If accepted, the record is stored as {@link StatusEnum#ACCEPTED} and a synchronization HTTP call
-     * is triggered to update the corresponding order's status to {@code PAID}.</li>
+     * <li><b>DECLINED:</b> Saved to the database and published without throwing errors.</li>
+     * <li><b>ACCEPTED:</b> Saved to the database. If publishing the event to RabbitMQ
+     * fails, a runtime exception is raised.</li>
      * </ul>
+     * </p>
      *
-     * @param request the {@link PaymentRequest} payload containing transaction details and the related order ID
-     * @return the {@link PaymentResponse} payload mirroring the finalized database state
-     * @throws PaymentFailedException if the transaction is declined by the gateway, or if the gateway succeeds
-     * but the subsequent Order microservice webhook sync fails
+     * @param request the {@link PaymentRequest} containing the transaction details
+     * @return a {@link PaymentResponse} reflecting the final status of the transaction
+     * @throws PaymentFailedException if the payment succeeded but the outcome message
+     * could not be successfully broadcasted to the message broker
      */
     public PaymentResponse processPayment(PaymentRequest request) {
         Payment payment = paymentMapper.toEntity(request);
-
         boolean isAccepted = ThreadLocalRandom.current().nextBoolean();
 
         if (!isAccepted) {
             payment.setStatus(StatusEnum.DECLINED);
             paymentRepository.save(payment);
 
-            throw new PaymentFailedException("Transaction declined by the credit card issuer.");
+            PaymentResponse declinedResponse = paymentMapper.toResponse(payment);
+            sendResultToRabbitMQ(declinedResponse);
+
+            return declinedResponse;
         }
 
         payment.setStatus(StatusEnum.ACCEPTED);
         Payment savedPayment = paymentRepository.save(payment);
+        PaymentResponse response = paymentMapper.toResponse(savedPayment);
 
         try {
-            orderRestClient.put()
-                    .uri("/orders/{id}/status?status={status}", savedPayment.getOrderId(), "PAID")
-                    .retrieve()
-                    .toBodilessEntity();
+            sendResultToRabbitMQ(response);
         } catch (Exception e) {
-            throw new PaymentFailedException("Payment succeeded, but failed to sync with Order Service: " + e.getMessage());
+            throw new PaymentFailedException("Payment succeeded, but failed to publish update: " + e.getMessage());
         }
 
-        return paymentMapper.toResponse(savedPayment);
+        return response;
     }
 
     /**
-     * Retrieves all transaction records mapped to a specific order identifier.
+     * Helper method to dispatch the payment response event payload to RabbitMQ.
      *
-     * @param orderId the unique {@link UUID} of the order whose payment records are being audited
-     * @return a {@link List} of {@link PaymentResponse} elements representing the history of payments for the order
+     * @param response the transaction payload to be dispatched
+     */
+    private void sendResultToRabbitMQ(PaymentResponse response) {
+        rabbitTemplate.convertAndSend(
+                "exchange-payment-results",
+                "payment.status.updated",
+                response
+        );
+    }
+
+    /**
+     * Retrieves the complete transaction history associated with a specific order.
+     *
+     * @param orderId the unique identifier {@link UUID} of the order
+     * @return a {@link List} of {@link PaymentResponse} objects matching the requested order ID,
+     * or an empty list if no transactions were found
      */
     public List<PaymentResponse> getPaymentsByOrderId(UUID orderId) {
         return paymentRepository.findByOrderId(orderId)
