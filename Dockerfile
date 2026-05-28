@@ -1,5 +1,5 @@
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-COPY target/*.jar gestionepagamenti.jar
+COPY target/*.jar gestionepagamento.jar
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","gestionepagamenti.jar"]
+ENTRYPOINT ["java","-jar","gestionepagamento.jar"]
