@@ -12,6 +12,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class PaymentResponse {
+    private UUID orderId;
+
     private UUID transactionId;
 
     @NotNull
