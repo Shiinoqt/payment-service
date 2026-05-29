@@ -33,6 +33,4 @@ build/
 .vscode/
 
 .env
-
-.application-test.properties
 src/test/resources/application-test.properties
