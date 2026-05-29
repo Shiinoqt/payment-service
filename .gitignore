@@ -35,3 +35,4 @@ build/
 .env
 
 .application-test.properties
+src/test/resources/application-test.properties
