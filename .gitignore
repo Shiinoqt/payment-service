@@ -34,4 +34,4 @@ build/
 
 .env
 
-application-test.properties
+.application-test.properties
