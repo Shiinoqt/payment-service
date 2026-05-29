@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<PaymentRequest> findByStatus(StatusEnum status);
     List<Payment> findByOrderId(UUID orderId);
+    int deleteByStatus(StatusEnum status);
 }
