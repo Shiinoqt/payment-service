@@ -2,6 +2,7 @@ package com.its.gestionepagamentirestclient.controller;
 
 import com.its.gestionepagamentirestclient.dto.PaymentRequest;
 import com.its.gestionepagamentirestclient.dto.PaymentResponse;
+import com.its.gestionepagamentirestclient.security.RequiresAdmin;
 import com.its.gestionepagamentirestclient.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class PaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @RequiresAdmin
     @GetMapping(path = "/orders/{id}")
     public ResponseEntity<List<PaymentResponse>> getPaymentsByOrderId(@PathVariable UUID id) {
         List<PaymentResponse> responses = paymentService.getPaymentsByOrderId(id);
