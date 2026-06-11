@@ -1,5 +1,6 @@
 package com.its.gestionepagamentirestclient.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
@@ -15,6 +16,9 @@ import java.util.UUID;
 public class PaymentRequest {
     @NotNull
     private UUID orderId;
+
+    @NotBlank
+    private String email;
 
     @NotNull
     @PositiveOrZero(message = "Total must be zero or positive")

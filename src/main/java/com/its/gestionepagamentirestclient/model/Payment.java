@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+/**
+ * Payment entity persisted by the payment service.
+ */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -16,14 +19,22 @@ import java.util.UUID;
 @Builder
 @Table(name = "payments")
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID transactionId;
 
+    @Column(nullable = false)
     private UUID orderId;
 
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private StatusEnum status;
 
     @CreationTimestamp

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} [%X{correlationId}] - %msg%n"/>
+        </Console>
+
+        <!-- Audit log: immutable transaction trail -->
+        <RollingFile name="AuditFile" fileName="logs/payment-audit.log"
+                     filePattern="logs/payment-audit-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d [%t] %-5level %logger{36} [%X{correlationId}] [%X{userId}] [%X{transactionId}] - %msg%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="180"/> <!-- 6 months of audit logs -->
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Payment service code -->
+        <Logger name="com.its.payment" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Transaction events: audit trail -->
+        <Logger name="com.its.payment.transaction" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AuditFile"/>
+        </Logger>
+
+        <!-- Payment provider API calls: DEBUG for debugging -->
+        <Logger name="com.its.payment.provider" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- CRITICAL: Never log sensitive data -->
+        <Logger name="org.apache.http" level="warn"/> <!-- prevents HTTP body logging -->
+        <Logger name="org.springframework" level="warn"/>
+        <Logger name="org.hibernate" level="warn"/>
+
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

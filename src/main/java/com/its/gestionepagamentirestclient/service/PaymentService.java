@@ -66,6 +66,9 @@ public class PaymentService {
         payment.setStatus(StatusEnum.ACCEPTED);
         Payment savedPayment = paymentRepository.save(payment);
         PaymentResponse response = paymentMapper.toResponse(savedPayment);
+        System.out.println("Publishing payment result: orderId=" + response.getOrderId()
+                + ", email=" + response.getEmail()
+                + ", status=" + response.getStatus());
 
         try {
             sendResultToRabbitMQ(response);
@@ -82,6 +85,10 @@ public class PaymentService {
      * @param response the transaction payload to be dispatched
      */
     private void sendResultToRabbitMQ(PaymentResponse response) {
+        if (response.getEmail() == null || response.getEmail().isBlank()) {
+            throw new IllegalArgumentException("Payment response email is missing before publish");
+        }
+
         rabbitTemplate.convertAndSend(
                 "exchange-payment-results",
                 "payment.status.updated",

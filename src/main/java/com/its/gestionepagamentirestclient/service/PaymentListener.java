@@ -1,5 +1,6 @@
 package com.its.gestionepagamentirestclient.service;
 
+import com.its.gestionepagamentirestclient.config.RabbitMQConfig;
 import com.its.gestionepagamentirestclient.dto.PaymentRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -29,7 +30,7 @@ public class PaymentListener {
      *
      * @param request the deserialized payment request payload containing transaction details
      */
-    @RabbitListener(queues = "queue-payment")
+    @RabbitListener(queues = RabbitMQConfig.PAYMENT_QUEUE)
     public void receivePayment(PaymentRequest request) {
         paymentService.processPayment(request);
     }
