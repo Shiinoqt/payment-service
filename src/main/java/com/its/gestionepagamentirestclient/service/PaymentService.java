@@ -8,6 +8,7 @@ import com.its.gestionepagamentirestclient.model.Payment;
 import com.its.gestionepagamentirestclient.model.StatusEnum;
 import com.its.gestionepagamentirestclient.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * and broadcasts transaction result payloads back to RabbitMQ.
  * </p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -64,6 +66,11 @@ public class PaymentService {
         }
 
         payment.setStatus(StatusEnum.ACCEPTED);
+        log.info("Saving payment: orderId={}, email=[{}], amount={}, status={}",
+                payment.getOrderId(),
+                payment.getEmail(),
+                payment.getAmount(),
+                payment.getStatus());
         Payment savedPayment = paymentRepository.save(payment);
         PaymentResponse response = paymentMapper.toResponse(savedPayment);
         System.out.println("Publishing payment result: orderId=" + response.getOrderId()
