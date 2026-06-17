@@ -1,58 +1,48 @@
-# Gestione Pagamenti REST Client
+# payment-service
 
-Simple Spring Boot project that manages payments using REST APIs and RabbitMQ for asynchronous message handling.
+Spring Boot payment service that manages payment records, persists them in MySQL, exposes HTTP endpoints, and integrates with RabbitMQ to consume payment requests and publish payment status updates back to the order domain.
 
-## Features
+## Overview
 
-* REST client integration
-* RabbitMQ messaging
-* Asynchronous payment processing
-* JSON support
-* Spring Boot backend
+This repository is a Java 17 Spring Boot application built with Maven and prepared for Docker-based deployment. Its Maven configuration includes Spring Boot 4.0.6, Spring Data JPA, JDBC, Web MVC, validation, Actuator, AMQP, MySQL, MapStruct, dotenv support, and Log4j2 logging.
 
-## Tech Stack
+## Stack
 
-* Java
-* Spring Boot
-* RabbitMQ
-* Maven
+The repository uses Java 17, Maven Wrapper, Spring Boot, Spring Data JPA, Spring Web MVC, Spring AMQP, MySQL, RabbitMQ, MapStruct, Lombok, and Log4j2. The included `Dockerfile` packages the application so it can be run in a containerized environment.
 
-## Run the Project
+## Project structure
 
+```text
+.
+├── Dockerfile
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+└── src
+    ├── main
+    │   ├── java/com/its/gestionepagamentirestclient
+    │   │   ├── config
+    │   │   ├── controller
+    │   │   ├── dto
+    │   │   ├── exception
+    │   │   ├── logging
+    │   │   ├── mapper
+    │   │   ├── model
+    │   │   ├── repository
+    │   │   ├── security
+    │   │   ├── service
+    │   │   └── utility
+    │   └── resources
+    └── test
 ```
-git clone -b rabbitmq https://github.com/Shiinoqt/gestione-pagamenti-restclient.git
-```
+## Messaging flow
 
-Enter the folder:
+This application is intended to consume payment-related requests, process payment outcomes, and publish status updates for downstream order handling. The repository includes dedicated configuration and service classes for AMQP messaging, plus DTOs for payment request and response payloads.
 
-```
-cd gestione-pagamenti-restclient
-```
+A simplified flow looks like this:
 
-Start RabbitMQ with Docker:
-
-```
-docker run -d --hostname rabbitmq --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management
-```
-
-Run the application:
-
-```
-mvn spring-boot:run
-```
-
-## Configuration
-
-Edit:
-
-```
-src/main/resources/application.properties
-```
-
-Example:
-
-```
-spring.rabbitmq.host=localhost
-spring.rabbitmq.port=5672
-```
-
+1. The order service sends a payment-related request.
+2. The payment service receives the message through RabbitMQ.
+3. The payment service stores or updates payment data in MySQL.
+4. The payment service publishes a payment result or status event.
+5. The order service consumes the result and updates the related order.
