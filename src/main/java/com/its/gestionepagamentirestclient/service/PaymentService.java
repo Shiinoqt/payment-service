@@ -15,6 +15,14 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -57,13 +65,19 @@ public class PaymentService {
             payment.setStatus(finalStatus);
             Payment savedPayment = paymentRepository.save(payment);
 
-            PaymentResponse response = paymentMapper.toResponse(savedPayment);
+            String receiptFilename = createReceiptFile(
+                    MDC.get("caller"),
+                    savedPayment.getCreation(),
+                    savedPayment.getAmount()
+            );
+            savedPayment.setReceiptFilename(receiptFilename);
+            paymentRepository.save(savedPayment);
 
+            PaymentResponse response = paymentMapper.toResponse(savedPayment);
             log.info("event=payment_processed orderId={} paymentStatus={}",
                     response.getOrderId(), response.getStatus());
 
             publishPaymentResult(response, correlationId);
-
             return response;
         } catch (Exception e) {
             log.error("event=payment_processing_failed orderId={}", request.getOrderId(), e);
@@ -94,7 +108,7 @@ public class PaymentService {
                     MessageProperties props = message.getMessageProperties();
 
                     setHeaderIfPresent(props, "X-Correlation-Id", correlationId);
-                    setHeaderIfPresent(props, "caller", defaultIfBlank(MDC.get("caller"), "gestionepagamentirestclient"));
+                    setHeaderIfPresent(props, "caller", defaultIfBlank(MDC.get("caller")));
                     setHeaderIfPresent(props, "method", "AMQP");
                     setHeaderIfPresent(props, "uri", RabbitMQConfig.PAYMENT_RESULTS_QUEUE);
 
@@ -112,8 +126,8 @@ public class PaymentService {
         }
     }
 
-    private String defaultIfBlank(String value, String fallback) {
-        return (value == null || value.isBlank()) ? fallback : value;
+    private String defaultIfBlank(String value) {
+        return (value == null || value.isBlank()) ? "payment_service" : value;
     }
 
     /**
@@ -139,5 +153,22 @@ public class PaymentService {
                 .stream()
                 .map(paymentMapper::toResponse)
                 .toList();
+    }
+
+    public String createReceiptFile(String userId, LocalDate date, BigDecimal amount) throws IOException {
+        String filename = "receipt_" + LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".txt";
+
+        String content = userId + " at " + date + " paid " + amount;
+
+        Path receiptsDir = Paths.get(System.getProperty("user.home")).resolve("receipts");
+        if (!Files.exists(receiptsDir)) {
+            Files.createDirectories(receiptsDir);
+        }
+
+        Files.write(receiptsDir.resolve(filename), content.getBytes());
+        log.info("Receipt file created: {}", filename);
+
+        return filename; // <-- now returned
     }
 }

@@ -40,4 +40,7 @@ public class Payment {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDate creation;
+
+    @Column(name = "receipt_filename")
+    private String receiptFilename;
 }
