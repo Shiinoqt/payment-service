@@ -70,7 +70,7 @@ public class PaymentService {
                     savedPayment.getCreation(),
                     savedPayment.getAmount()
             );
-            savedPayment.setReceiptFilename(receiptFilename);
+            savedPayment.setReceipt(receiptFilename);
             paymentRepository.save(savedPayment);
 
             PaymentResponse response = paymentMapper.toResponse(savedPayment);
@@ -170,5 +170,21 @@ public class PaymentService {
         log.info("Receipt file created: {}", filename);
 
         return filename; // <-- now returned
+    }
+
+    public void attachReceipt(UUID orderId, String receiptFileName) {
+        paymentRepository.findByOrderId(orderId)
+                .stream()
+                .filter(p -> p.getStatus() == StatusEnum.ACCEPTED)
+                .findFirst()
+                .ifPresentOrElse(
+                        payment -> {
+                            payment.setReceipt(receiptFileName);
+                            paymentRepository.save(payment);
+                            log.info("event=receipt_attached orderId={} fileName={}",
+                                    orderId, receiptFileName);
+                        },
+                        () -> log.warn("event=receipt_attach_no_payment orderId={}", orderId)
+                );
     }
 }

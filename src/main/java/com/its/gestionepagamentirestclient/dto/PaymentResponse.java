@@ -19,4 +19,5 @@ public class PaymentResponse {
     private BigDecimal amount;
     @NotNull
     private StatusEnum status;
+    private String receipt;
 }

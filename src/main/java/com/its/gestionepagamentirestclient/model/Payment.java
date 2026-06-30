@@ -42,5 +42,5 @@ public class Payment {
     private LocalDate creation;
 
     @Column(name = "receipt_filename")
-    private String receiptFilename;
+    private String receipt;
 }
