@@ -131,6 +131,17 @@
             <artifactId>log4j-slf4j2-impl</artifactId>
             <version>2.26.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.20.132</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>auth</artifactId>
+            <version>2.20.132</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
